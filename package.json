@@ -1,0 +1,21 @@
+{
+  "name": "mawasiem-backend",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "server": "node server-mongodb.js",
+    "dev": "node server-mongodb.js",
+    "start": "node server-mongodb.js",
+    "migrate": "node scripts/migrate-to-mongodb.js"
+  },
+  "dependencies": {
+    "@types/nodemailer": "^6.4.17",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.21.0",
+    "mongoose": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.3"
+  }
+}

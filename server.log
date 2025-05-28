@@ -1,0 +1,11 @@
+(node:338) [MONGOOSE] Warning: Duplicate schema index on {"code":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:338) [MONGOOSE] Warning: Duplicate schema index on {"id":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+✅ MongoDB connected successfully
+🚀 Mawasiem Server with MongoDB is running!
+📍 Server: http://localhost:3001
+🗄️  Database: MongoDB
+🔍 Health Check: http://localhost:3001/api/health
+🎯 Frontend: Remember to run 'cd frontend && npm run dev'
+🗑️ Attempting to delete cart item 5 for user 1
+✅ Cart item 5 deleted successfully for user 1

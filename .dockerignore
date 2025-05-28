@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+.nyc_output
+coverage
+.nyc_output
+*.json
+!package*.json
+logs
+backups
+.DS_Store
+*.log 

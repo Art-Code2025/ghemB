@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Size Guide Placeholders</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .size-guide {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 20px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .size-guide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            z-index: 1;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            z-index: 1;
+        }
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            z-index: 1;
+        }
+        .sash-cap { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .jacket { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .graduation { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .apron { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .cap-only { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    </style>
+</head>
+<body>
+    <h1>دليل المقاسات - صور افتراضية</h1>
+    
+    <div class="size-guide sash-cap">
+        <div class="icon">🎓</div>
+        <div class="title">دليل مقاسات</div>
+        <div class="subtitle">وشاح وكاب</div>
+    </div>
+    
+    <div class="size-guide jacket">
+        <div class="icon">🧥</div>
+        <div class="title">دليل مقاسات</div>
+        <div class="subtitle">جاكيت</div>
+    </div>
+    
+    <div class="size-guide graduation">
+        <div class="icon">👨‍🎓</div>
+        <div class="title">دليل مقاسات</div>
+        <div class="subtitle">عباية تخرج</div>
+    </div>
+    
+    <div class="size-guide apron">
+        <div class="icon">👗</div>
+        <div class="title">دليل مقاسات</div>
+        <div class="subtitle">مريول مدرسي</div>
+    </div>
+    
+    <div class="size-guide cap-only">
+        <div class="icon">🎩</div>
+        <div class="title">دليل مقاسات</div>
+        <div class="subtitle">كاب فقط</div>
+    </div>
+    
+    <script>
+        // يمكن استخدام هذا الكود لتحويل العناصر إلى صور
+        console.log('استخدم أدوات المطور لأخذ لقطات شاشة من كل عنصر');
+    </script>
+</body>
+</html> 

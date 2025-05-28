@@ -1,0 +1,28 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#grad1)" rx="20"/>
+  <rect width="400" height="400" fill="url(#grid)" rx="20"/>
+  
+  <!-- Icon -->
+  <text x="200" y="150" text-anchor="middle" font-size="80" fill="white">🎓</text>
+  
+  <!-- Title -->
+  <text x="200" y="220" text-anchor="middle" font-size="28" font-weight="bold" fill="white" font-family="Arial, sans-serif">دليل مقاسات</text>
+  
+  <!-- Subtitle -->
+  <text x="200" y="250" text-anchor="middle" font-size="18" fill="rgba(255,255,255,0.9)" font-family="Arial, sans-serif">وشاح وكاب</text>
+  
+  <!-- Size info -->
+  <text x="200" y="300" text-anchor="middle" font-size="14" fill="rgba(255,255,255,0.8)" font-family="Arial, sans-serif">مقاسات قياسية للوشاح والكاب</text>
+  <text x="200" y="320" text-anchor="middle" font-size="12" fill="rgba(255,255,255,0.7)" font-family="Arial, sans-serif">يرجى اختيار المقاس المناسب</text>
+</svg> 
