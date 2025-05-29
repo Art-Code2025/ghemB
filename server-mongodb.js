@@ -30,8 +30,13 @@ const corsOptions = {
     'http://localhost:5173',
     'http://localhost:5174', 
     'http://localhost:3000',
-    'https://ghemf.netlify.app',  // Netlify frontend URL
+    'https://ghemf.netlify.app',  // Old Netlify URL (keep for backup)
     'https://ghemf.netlify.app/', // With trailing slash
+    // Custom domains - PRODUCTION READY 🚀
+    'https://ghem.store',         // Main domain
+    'https://www.ghem.store',     // With www
+    'http://ghem.store',          // HTTP version (for redirects)
+    'http://www.ghem.store',      // HTTP with www
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
