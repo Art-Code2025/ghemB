@@ -915,10 +915,16 @@ app.get('/api/cart', async (req, res) => {
         product: product ? {
           id: product.id,
           name: product.name,
+          description: product.description,
           price: product.price,
           originalPrice: product.originalPrice,
           mainImage: product.mainImage,
-          stock: product.stock
+          detailedImages: product.detailedImages || [],
+          stock: product.stock,
+          productType: product.productType,
+          dynamicOptions: product.dynamicOptions || [],
+          specifications: product.specifications || [],
+          sizeGuideImage: product.sizeGuideImage
         } : null
       };
     }));
@@ -1536,80 +1542,96 @@ app.post('/api/user/:userId/cart', async (req, res) => {
 });
 
 // Update cart item quantity
-app.put('/api/user/:userId/cart', async (req, res) => {
+app.put('/api/user/:userId/cart/:itemId', async (req, res) => {
   try {
     const userId = req.params.userId;
-    const { productId, quantity } = req.body;
+    const itemId = parseInt(req.params.itemId);
+    const { quantity, selectedOptions, optionsPricing, attachments, productId } = req.body;
     
-    const item = await Cart.findOneAndUpdate(
-      { userId, productId },
-      { quantity: parseInt(quantity) },
-      { new: true }
-    );
-
-    if (!item) {
-      return res.status(404).json({ message: 'Cart item not found' });
+    console.log(`🔄 Updating cart item ${itemId} for user ${userId}`);
+    console.log('📦 Request body:', { quantity, selectedOptions, optionsPricing, attachments, productId });
+    
+    // تحضير البيانات للتحديث
+    const updateData = {};
+    
+    if (quantity !== undefined) {
+      if (quantity < 1) {
+        return res.status(400).json({ message: 'Invalid quantity' });
+      }
+      updateData.quantity = quantity;
+      console.log(`📊 Updating quantity to: ${quantity}`);
     }
-
-    res.json(item);
-  } catch (error) {
-    console.error('Error in PUT /api/user/:userId/cart:', error);
-    res.status(500).json({ message: 'Failed to update cart item' });
-  }
-});
-
-// Update cart item options
-app.put('/api/user/:userId/cart/options', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const { productId, selectedOptions } = req.body;
     
-    const item = await Cart.findOneAndUpdate(
-      { userId, productId },
-      { selectedOptions: selectedOptions || {} },
-      { new: true }
-    );
-
-    if (!item) {
-      return res.status(404).json({ message: 'Cart item not found' });
+    if (selectedOptions !== undefined) {
+      updateData.selectedOptions = selectedOptions;
+      console.log(`🎯 Updating selectedOptions:`, selectedOptions);
     }
-
-    res.json(item);
-  } catch (error) {
-    console.error('Error in PUT /api/user/:userId/cart/options:', error);
-    res.status(500).json({ message: 'Failed to update cart item options' });
-  }
-});
-
-// Update cart item options (alternative endpoint)
-app.put('/api/user/:userId/cart/update-options', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const { productId, selectedOptions, attachments } = req.body;
     
-    console.log(`🛒 Updating options for user ${userId}, product ${productId}:`, selectedOptions);
-    console.log(`🛒 Updating attachments:`, attachments);
+    if (optionsPricing !== undefined) {
+      updateData.optionsPricing = optionsPricing;
+      console.log(`💰 Updating optionsPricing:`, optionsPricing);
+    }
     
-    const updateData = { selectedOptions: selectedOptions || {} };
-    if (attachments) {
+    if (attachments !== undefined) {
       updateData.attachments = attachments;
+      console.log(`📎 Updating attachments:`, attachments);
     }
     
-    const item = await Cart.findOneAndUpdate(
-      { userId, productId },
+    if (productId !== undefined) {
+      updateData.productId = productId;
+      console.log(`🏷️ Updating productId to: ${productId}`);
+    }
+    
+    // Try to find by id (number) first
+    let item = await Cart.findOneAndUpdate(
+      { id: itemId, userId },
       updateData,
       { new: true }
     );
+    
+    // If not found, try by _id (ObjectId) as fallback
+    if (!item) {
+      console.log(`🔄 Item not found by id, trying _id for item ${itemId}`);
+      try {
+        item = await Cart.findOneAndUpdate(
+          { _id: itemId, userId },
+          updateData,
+          { new: true }
+        );
+      } catch (err) {
+        console.log(`❌ Invalid ObjectId format: ${itemId}`);
+      }
+    }
 
     if (!item) {
+      console.log(`❌ Cart item ${itemId} not found for user ${userId}`);
       return res.status(404).json({ message: 'Cart item not found' });
     }
 
-    console.log('🛒 Options and attachments updated successfully');
-    res.json({ message: 'Options updated successfully', item });
+    console.log(`✅ Cart item ${itemId} updated successfully for user ${userId}`);
+    console.log(`✅ Final item state:`, {
+      id: item.id,
+      productId: item.productId,
+      quantity: item.quantity,
+      selectedOptions: item.selectedOptions,
+      optionsPricing: item.optionsPricing,
+      attachments: item.attachments
+    });
+    
+    res.json({ 
+      message: 'Cart item updated successfully', 
+      item: {
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions,
+        optionsPricing: item.optionsPricing,
+        attachments: item.attachments
+      }
+    });
   } catch (error) {
-    console.error('Error in PUT /api/user/:userId/cart/update-options:', error);
-    res.status(500).json({ message: 'Failed to update cart item options' });
+    console.error('Error in PUT /api/user/:userId/cart/:itemId:', error);
+    res.status(500).json({ message: 'Failed to update cart item' });
   }
 });
 
@@ -1668,53 +1690,6 @@ app.delete('/api/user/:userId/cart/:itemId', async (req, res) => {
   } catch (error) {
     console.error('Error in DELETE /api/user/:userId/cart/:itemId:', error);
     res.status(500).json({ message: 'Failed to remove from cart' });
-  }
-});
-
-// Update cart item quantity
-app.put('/api/user/:userId/cart/:itemId', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const itemId = parseInt(req.params.itemId);
-    const { quantity } = req.body;
-    
-    if (!quantity || quantity < 1) {
-      return res.status(400).json({ message: 'Invalid quantity' });
-    }
-    
-    console.log(`🔄 Attempting to update quantity for cart item ${itemId} to ${quantity} for user ${userId}`);
-    
-    // Try to find by id (number) first
-    let item = await Cart.findOneAndUpdate(
-      { id: itemId, userId },
-      { quantity },
-      { new: true }
-    );
-    
-    // If not found, try by _id (ObjectId) as fallback
-    if (!item) {
-      console.log(`🔄 Item not found by id, trying _id for item ${itemId}`);
-      try {
-        item = await Cart.findOneAndUpdate(
-          { _id: itemId, userId },
-          { quantity },
-          { new: true }
-        );
-      } catch (err) {
-        console.log(`❌ Invalid ObjectId format: ${itemId}`);
-      }
-    }
-
-    if (!item) {
-      console.log(`❌ Cart item ${itemId} not found for user ${userId}`);
-      return res.status(404).json({ message: 'Cart item not found' });
-    }
-
-    console.log(`✅ Cart item ${itemId} quantity updated to ${quantity} for user ${userId}`);
-    res.json({ message: 'Quantity updated successfully', item });
-  } catch (error) {
-    console.error('Error in PUT /api/user/:userId/cart/:itemId:', error);
-    res.status(500).json({ message: 'Failed to update quantity' });
   }
 });
 
@@ -1847,44 +1822,6 @@ app.post('/api/upload-attachments', uploadFiles, async (req, res) => {
   }
 });
 
-// Update cart item options
-app.put('/api/user/:userId/cart/update-options', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const { productId, selectedOptions, attachments } = req.body;
-    
-    console.log(`🔄 Updating cart options for user ${userId}, product ${productId}`);
-    console.log('📝 New options:', selectedOptions);
-    console.log('📎 New attachments:', attachments);
-    
-    // العثور على العنصر في السلة
-    const cartItem = await Cart.findOne({ userId, productId });
-    if (!cartItem) {
-      return res.status(404).json({ message: 'المنتج غير موجود في السلة' });
-    }
-    
-    // تحديث الخيارات والمرفقات
-    cartItem.selectedOptions = selectedOptions || {};
-    cartItem.attachments = attachments || {};
-    
-    await cartItem.save();
-    
-    console.log('✅ Cart options updated successfully');
-    res.json({ 
-      message: 'تم تحديث خيارات المنتج بنجاح',
-      cartItem: {
-        id: cartItem.id,
-        productId: cartItem.productId,
-        selectedOptions: cartItem.selectedOptions,
-        attachments: cartItem.attachments
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error updating cart options:', error);
-    res.status(500).json({ message: 'فشل في تحديث خيارات المنتج' });
-  }
-});
-
 // Checkout endpoint
 app.post('/api/checkout', async (req, res) => {
   try {
@@ -1968,6 +1905,57 @@ app.post('/api/checkout', async (req, res) => {
   } catch (error) {
     console.error('Error in POST /api/checkout:', error);
     res.status(500).json({ message: 'Failed to create order', error: error.message });
+  }
+});
+
+// Update cart item options (alternative endpoint for options-only updates)
+app.put('/api/user/:userId/cart/update-options', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { productId, selectedOptions, attachments } = req.body;
+    
+    console.log(`🔄 Updating cart options for user ${userId}, product ${productId}`);
+    console.log('📝 New options:', selectedOptions);
+    console.log('📎 New attachments:', attachments);
+    
+    // العثور على العنصر في السلة
+    const cartItem = await Cart.findOne({ userId, productId });
+    if (!cartItem) {
+      return res.status(404).json({ message: 'المنتج غير موجود في السلة' });
+    }
+    
+    // تحديث الخيارات والمرفقات
+    if (selectedOptions !== undefined) {
+      cartItem.selectedOptions = selectedOptions;
+    }
+    if (attachments !== undefined) {
+      cartItem.attachments = attachments;
+    }
+    
+    await cartItem.save();
+    
+    console.log('✅ Cart options updated successfully');
+    console.log('✅ Final cart item:', {
+      id: cartItem.id,
+      productId: cartItem.productId,
+      selectedOptions: cartItem.selectedOptions,
+      attachments: cartItem.attachments
+    });
+    
+    res.json({ 
+      message: 'تم تحديث خيارات المنتج بنجاح',
+      cartItem: {
+        id: cartItem.id,
+        productId: cartItem.productId,
+        quantity: cartItem.quantity,
+        selectedOptions: cartItem.selectedOptions,
+        optionsPricing: cartItem.optionsPricing,
+        attachments: cartItem.attachments
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error updating cart options:', error);
+    res.status(500).json({ message: 'فشل في تحديث خيارات المنتج' });
   }
 });
 
