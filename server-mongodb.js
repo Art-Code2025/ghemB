@@ -102,6 +102,36 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use(handleMulterError);
 
+// Root health check
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'Server is running',
+    message: 'Mawasiem Backend API',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    authentication: 'Available at /api/auth/login and /api/auth/register'
+  });
+});
+
+// Health check endpoint  
+app.get('/api/health', async (req, res) => {
+  try {
+    const healthData = {
+      status: 'healthy',
+      database: 'MongoDB',
+      timestamp: new Date().toISOString(),
+      authentication: 'Available'
+    };
+    res.json(healthData);
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // MongoDB Schemas
 const categorySchema = new mongoose.Schema({
   id: { type: Number, unique: true },
@@ -1311,41 +1341,6 @@ app.delete('/api/reviews/:id', async (req, res) => {
   } catch (error) {
     console.error('Error in DELETE /api/reviews/:id:', error);
     res.status(500).json({ message: 'Failed to delete review' });
-  }
-});
-
-// Health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    const categoriesCount = await Category.countDocuments({ isActive: true });
-    const productsCount = await Product.countDocuments({ isActive: true });
-    const couponsCount = await Coupon.countDocuments({ isActive: true });
-    const cartItemsCount = await Cart.countDocuments();
-    const wishlistItemsCount = await Wishlist.countDocuments();
-    const customersCount = await Customer.countDocuments({ status: 'active' });
-    const ordersCount = await Order.countDocuments();
-    const pendingOrders = await Order.countDocuments({ status: 'pending' });
-    const reviewsCount = await Review.countDocuments();
-    
-    res.json({
-      status: 'healthy',
-      database: 'MongoDB',
-      categories: categoriesCount,
-      products: productsCount,
-      coupons: couponsCount,
-      cartItems: cartItemsCount,
-      wishlistItems: wishlistItemsCount,
-      customers: customersCount,
-      orders: ordersCount,
-      pendingOrders: pendingOrders,
-      reviews: reviewsCount,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'unhealthy',
-      error: error.message
-    });
   }
 });
 
