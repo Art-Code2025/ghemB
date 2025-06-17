@@ -102,6 +102,36 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/images', express.static(path.join(__dirname, 'public/images')));
 app.use(handleMulterError);
 
+// Root health check
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'Server is running',
+    message: 'Mawasiem Backend API',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    authentication: 'Available at /api/auth/login and /api/auth/register'
+  });
+});
+
+// Health check endpoint  
+app.get('/api/health', async (req, res) => {
+  try {
+    const healthData = {
+      status: 'healthy',
+      database: 'MongoDB',
+      timestamp: new Date().toISOString(),
+      authentication: 'Available'
+    };
+    res.json(healthData);
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'unhealthy', 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // MongoDB Schemas
 const categorySchema = new mongoose.Schema({
   id: { type: Number, unique: true },
@@ -192,17 +222,17 @@ async function connectDB() {
 // ======================
 // CATEGORIES APIs
 // ======================
-app.get('/categories', async (req, res) => {
+app.get('/api/categories', async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true }).sort({ createdAt: -1 });
     res.json(categories);
   } catch (error) {
-    console.error('Error in GET /categories:', error);
+    console.error('Error in GET /api/categories:', error);
     res.status(500).json({ message: 'Failed to fetch categories' });
   }
 });
 
-app.get('/categories/:id', async (req, res) => {
+app.get('/api/categories/:id', async (req, res) => {
   try {
     const category = await Category.findOne({ id: parseInt(req.params.id), isActive: true });
     if (!category) {
@@ -210,12 +240,12 @@ app.get('/categories/:id', async (req, res) => {
     }
     res.json(category);
   } catch (error) {
-    console.error('Error in GET /categories/:id:', error);
+    console.error('Error in GET /api/categories/:id:', error);
     res.status(500).json({ message: 'Failed to fetch category' });
   }
 });
 
-app.post('/categories', uploadFiles, async (req, res) => {
+app.post('/api/categories', uploadFiles, async (req, res) => {
   try {
     console.log('Creating category with data:', req.body);
     console.log('Files received:', req.files);
@@ -233,12 +263,12 @@ app.post('/categories', uploadFiles, async (req, res) => {
     console.log('Category created successfully:', category);
     res.status(201).json(category);
   } catch (error) {
-    console.error('Error in POST /categories:', error);
+    console.error('Error in POST /api/categories:', error);
     res.status(500).json({ message: 'Failed to create category', error: error.message });
   }
 });
 
-app.put('/categories/:id', uploadFiles, async (req, res) => {
+app.put('/api/categories/:id', uploadFiles, async (req, res) => {
   try {
     const { name, description } = req.body;
     const imageFile = req.files?.find(f => f.fieldname === 'mainImage');
@@ -1314,41 +1344,6 @@ app.delete('/api/reviews/:id', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    const categoriesCount = await Category.countDocuments({ isActive: true });
-    const productsCount = await Product.countDocuments({ isActive: true });
-    const couponsCount = await Coupon.countDocuments({ isActive: true });
-    const cartItemsCount = await Cart.countDocuments();
-    const wishlistItemsCount = await Wishlist.countDocuments();
-    const customersCount = await Customer.countDocuments({ status: 'active' });
-    const ordersCount = await Order.countDocuments();
-    const pendingOrders = await Order.countDocuments({ status: 'pending' });
-    const reviewsCount = await Review.countDocuments();
-    
-    res.json({
-      status: 'healthy',
-      database: 'MongoDB',
-      categories: categoriesCount,
-      products: productsCount,
-      coupons: couponsCount,
-      cartItems: cartItemsCount,
-      wishlistItems: wishlistItemsCount,
-      customers: customersCount,
-      orders: ordersCount,
-      pendingOrders: pendingOrders,
-      reviews: reviewsCount,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: 'unhealthy',
-      error: error.message
-    });
-  }
-});
-
 // ======================
 // AUTHENTICATION APIs (Login, Register)
 // ======================
@@ -2078,4 +2073,4 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error); 
+startServer().catch(console.error);   
