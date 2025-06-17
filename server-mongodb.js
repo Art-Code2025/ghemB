@@ -1453,6 +1453,63 @@ app.post('/api/auth/complete-registration', async (req, res) => {
   }
 });
 
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const customer = await Customer.findOne({ email });
+    if (!customer) {
+      return res.status(404).json({ message: 'البريد الإلكتروني غير مسجل' });
+    }
+
+    // التحقق من كلمة المرور
+    const isValidPassword = await customer.comparePassword(password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'كلمة المرور غير صحيحة' });
+    }
+
+    res.json({ 
+      message: 'تم تسجيل الدخول بنجاح',
+      user: customer
+    });
+  } catch (error) {
+    console.error('Error in POST /api/auth/login:', error);
+    res.status(500).json({ message: 'خطأ في الاتصال. حاول مرة أخرى' });
+  }
+});
+
+// Register endpoint
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, phone } = req.body;
+    
+    // التحقق من وجود البريد الإلكتروني
+    const existingCustomer = await Customer.findOne({ email });
+    if (existingCustomer) {
+      return res.status(400).json({ message: 'البريد الإلكتروني مسجل بالفعل' });
+    }
+
+    // إنشاء عميل جديد
+    const customer = new Customer({
+      email,
+      password, // سيتم تشفير كلمة المرور في middleware
+      name: `${firstName} ${lastName}`,
+      phone
+    });
+
+    await customer.save();
+
+    res.json({ 
+      message: 'تم إنشاء الحساب بنجاح',
+      user: customer
+    });
+  } catch (error) {
+    console.error('Error in POST /api/auth/register:', error);
+    res.status(500).json({ message: 'خطأ في الاتصال. حاول مرة أخرى' });
+  }
+});
+
 // ======================
 // USER-SPECIFIC APIs (للتوافق مع الفرونت إند)
 // ======================

@@ -1,10 +1,12 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const customerSchema = new mongoose.Schema({
   id: { type: Number, unique: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
+  name: { type: String, default: 'عميل جديد' },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
   phone: { type: String, default: '' },
-  name: { type: String, required: true },
   city: { type: String, default: '' },
   
   // إحصائيات بسيطة
@@ -27,6 +29,19 @@ const customerSchema = new mongoose.Schema({
   
   createdAt: { type: Date, default: Date.now }
 });
+
+// تشفير كلمة المرور قبل الحفظ
+customerSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
+
+// مقارنة كلمة المرور
+customerSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 // Auto-increment ID
 customerSchema.pre('save', async function(next) {
