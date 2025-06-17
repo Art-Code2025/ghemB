@@ -25,5 +25,5 @@ ENV PORT=3001
 # فتح البورت
 EXPOSE 3001
 
-# تشغيل التطبيق
-CMD ["node", "server.js"] 
+# تشغيل التطبيق الصحيح الذي يحتوي على authentication endpoints
+CMD ["node", "server-mongodb.js"] 
