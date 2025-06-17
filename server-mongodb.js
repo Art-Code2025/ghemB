@@ -220,8 +220,21 @@ async function connectDB() {
 }
 
 // ======================
-// CATEGORIES APIs
+// CATEGORIES APIs (Both with and without /api/ prefix for compatibility)
 // ======================
+
+// Categories endpoints without /api/ prefix (for current production compatibility)
+app.get('/categories', async (req, res) => {
+  try {
+    const categories = await Category.find({ isActive: true }).sort({ createdAt: -1 });
+    res.json(categories);
+  } catch (error) {
+    console.error('Error in GET /categories:', error);
+    res.status(500).json({ message: 'Failed to fetch categories' });
+  }
+});
+
+// Categories endpoints with /api/ prefix (for frontend)
 app.get('/api/categories', async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true }).sort({ createdAt: -1 });
