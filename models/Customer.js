@@ -2,81 +2,129 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const customerSchema = new mongoose.Schema({
-  id: { type: Number, unique: true },
-  name: { type: String, default: 'عميل جديد' },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  phone: { type: String, default: '' },
-  city: { type: String, default: '' },
-  
-  // إحصائيات بسيطة
-  totalOrders: { type: Number, default: 0 },
-  totalSpent: { type: Number, default: 0 },
-  lastOrderDate: { type: Date },
-  
-  // حالة بسيطة
-  status: { 
+  id: { 
+    type: Number, 
+    unique: true 
+  },
+  email: { 
     type: String, 
-    enum: ['active', 'inactive'], 
-    default: 'active' 
+    required: true, 
+    unique: true,
+    lowercase: true,
+    trim: true
   },
-  
-  // OTP بسيط للتحقق فقط
+  password: {
+    type: String,
+    required: true,
+    minlength: 6
+  },
+  firstName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  name: {
+    type: String,
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  },
   otp: {
-    code: { type: String },
-    expiresAt: { type: Date }
+    code: String,
+    expiresAt: Date,
+    verified: { type: Boolean, default: false }
   },
-  
-  createdAt: { type: Date, default: Date.now }
-});
-
-// تشفير كلمة المرور قبل الحفظ
-customerSchema.pre('save', async function(next) {
-  if (this.isModified('password')) {
-    this.password = await bcrypt.hash(this.password, 10);
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-  next();
 });
-
-// مقارنة كلمة المرور
-customerSchema.methods.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
 
 // Auto-increment ID
 customerSchema.pre('save', async function(next) {
   if (this.isNew && !this.id) {
-    const lastCustomer = await this.constructor.findOne().sort({ id: -1 });
-    this.id = lastCustomer ? lastCustomer.id + 1 : 1;
+    try {
+      const lastCustomer = await this.constructor.findOne().sort({ id: -1 });
+      this.id = lastCustomer ? lastCustomer.id + 1 : 1;
+    } catch (error) {
+      return next(error);
+    }
   }
+  
+  // Update name field
+  if (this.firstName && this.lastName) {
+    this.name = `${this.firstName} ${this.lastName}`;
+  }
+  
+  this.updatedAt = new Date();
   next();
 });
 
-// إنشاء OTP بسيط (4 أرقام)
-customerSchema.methods.generateOTP = function() {
-  const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4 أرقام بدلاً من 6
-  const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+// Hash password before saving
+customerSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
   
-  this.otp = { code: otp, expiresAt };
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Compare password method
+customerSchema.methods.comparePassword = async function(candidatePassword) {
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Generate OTP
+customerSchema.methods.generateOTP = function() {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  this.otp = {
+    code: otp,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    verified: false
+  };
   return otp;
 };
 
-// التحقق من OTP بسيط
-customerSchema.methods.verifyOTP = function(inputOTP) {
+// Verify OTP
+customerSchema.methods.verifyOTP = function(inputOtp) {
   if (!this.otp || !this.otp.code) {
     return { valid: false, message: 'لم يتم إرسال كود التحقق' };
   }
   
-  if (new Date() > this.otp.expiresAt) {
+  if (this.otp.expiresAt < new Date()) {
     return { valid: false, message: 'انتهت صلاحية كود التحقق' };
   }
   
-  if (this.otp.code !== inputOTP) {
+  if (this.otp.code !== inputOtp) {
     return { valid: false, message: 'كود التحقق غير صحيح' };
   }
   
-  this.otp = undefined;
+  this.otp.verified = true;
   return { valid: true, message: 'تم التحقق بنجاح' };
 };
 
