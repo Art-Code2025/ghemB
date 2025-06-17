@@ -1458,24 +1458,48 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const customer = await Customer.findOne({ email });
-    if (!customer) {
-      return res.status(404).json({ message: 'البريد الإلكتروني غير مسجل' });
+    console.log('🔐 Login attempt for email:', email);
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'البريد الإلكتروني وكلمة المرور مطلوبان' });
     }
-
+    
+    // البحث عن المستخدم بالبريد الإلكتروني
+    const customer = await Customer.findOne({ email: email.toLowerCase() });
+    
+    if (!customer) {
+      console.log('❌ User not found:', email);
+      return res.status(404).json({ message: 'البريد الإلكتروني غير مسجل في النظام' });
+    }
+    
     // التحقق من كلمة المرور
-    const isValidPassword = await customer.comparePassword(password);
-    if (!isValidPassword) {
+    const isPasswordValid = await customer.comparePassword(password);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password for user:', email);
       return res.status(401).json({ message: 'كلمة المرور غير صحيحة' });
     }
-
-    res.json({ 
+    
+    console.log('✅ Login successful for user:', email);
+    
+    // إرجاع بيانات المستخدم (بدون كلمة المرور)
+    const userResponse = {
+      id: customer.id,
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      phone: customer.phone,
+      name: `${customer.firstName} ${customer.lastName}`
+    };
+    
+    res.json({
       message: 'تم تسجيل الدخول بنجاح',
-      user: customer
+      user: userResponse
     });
+    
   } catch (error) {
-    console.error('Error in POST /api/auth/login:', error);
-    res.status(500).json({ message: 'خطأ في الاتصال. حاول مرة أخرى' });
+    console.error('❌ Login error:', error);
+    res.status(500).json({ message: 'خطأ في الخادم، يرجى المحاولة لاحقاً' });
   }
 });
 
@@ -1484,29 +1508,57 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName, phone } = req.body;
     
-    // التحقق من وجود البريد الإلكتروني
-    const existingCustomer = await Customer.findOne({ email });
-    if (existingCustomer) {
-      return res.status(400).json({ message: 'البريد الإلكتروني مسجل بالفعل' });
+    console.log('📝 Registration attempt for email:', email);
+    
+    if (!email || !password || !firstName || !lastName || !phone) {
+      return res.status(400).json({ message: 'جميع الحقول مطلوبة' });
     }
-
-    // إنشاء عميل جديد
-    const customer = new Customer({
-      email,
-      password, // سيتم تشفير كلمة المرور في middleware
-      name: `${firstName} ${lastName}`,
+    
+    // التحقق من وجود المستخدم
+    const existingCustomer = await Customer.findOne({ email: email.toLowerCase() });
+    
+    if (existingCustomer) {
+      console.log('❌ Email already registered:', email);
+      return res.status(400).json({ message: 'البريد الإلكتروني مسجل بالفعل، يرجى تسجيل الدخول أو استخدام بريد آخر' });
+    }
+    
+    // إنشاء مستخدم جديد
+    const newCustomer = new Customer({
+      email: email.toLowerCase(),
+      password,
+      firstName,
+      lastName,
       phone
     });
-
-    await customer.save();
-
-    res.json({ 
+    
+    await newCustomer.save();
+    
+    console.log('✅ Registration successful for user:', email);
+    
+    // إرجاع بيانات المستخدم (بدون كلمة المرور)
+    const userResponse = {
+      id: newCustomer.id,
+      email: newCustomer.email,
+      firstName: newCustomer.firstName,
+      lastName: newCustomer.lastName,
+      phone: newCustomer.phone,
+      name: `${newCustomer.firstName} ${newCustomer.lastName}`
+    };
+    
+    res.status(201).json({
       message: 'تم إنشاء الحساب بنجاح',
-      user: customer
+      user: userResponse
     });
+    
   } catch (error) {
-    console.error('Error in POST /api/auth/register:', error);
-    res.status(500).json({ message: 'خطأ في الاتصال. حاول مرة أخرى' });
+    console.error('❌ Registration error:', error);
+    
+    if (error.code === 11000) {
+      // خطأ التكرار في قاعدة البيانات
+      return res.status(400).json({ message: 'البريد الإلكتروني مسجل بالفعل' });
+    }
+    
+    res.status(500).json({ message: 'خطأ في الخادم، يرجى المحاولة لاحقاً' });
   }
 });
 
