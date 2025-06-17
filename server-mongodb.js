@@ -108,7 +108,7 @@ app.get('/', (req, res) => {
     status: 'Server is running',
     message: 'Mawasiem Backend API',
     timestamp: new Date().toISOString(),
-    version: '2.1.0', // Updated to force deployment
+    version: '2.0.0',
     authentication: 'Available at /api/auth/login and /api/auth/register'
   });
 });
