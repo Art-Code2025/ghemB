@@ -1917,9 +1917,9 @@ app.post('/api/upload-attachments', uploadFiles, async (req, res) => {
 // Checkout endpoint
 app.post('/api/checkout', async (req, res) => {
   try {
-    const { items, customerInfo, paymentMethod, total, subtotal, deliveryFee, couponDiscount, appliedCoupon, paymentId, paymentStatus, userId } = req.body;
+    const { items, customerInfo, paymentMethod, total, subtotal, deliveryFee, couponDiscount, appliedCoupon, paymentId, paymentStatus, userId, isGuestOrder } = req.body;
     
-    console.log('Creating order with data:', {
+    console.log('💰 [Checkout] Creating order with data:', {
       customerInfo,
       itemsCount: items.length,
       total,
@@ -1928,8 +1928,18 @@ app.post('/api/checkout', async (req, res) => {
       couponDiscount,
       paymentMethod,
       paymentStatus,
-      userId
+      userId,
+      isGuestOrder: !!isGuestOrder
     });
+    
+    // التحقق من صحة البيانات الأساسية
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: 'لا يمكن إتمام طلب فارغ' });
+    }
+    
+    if (!customerInfo || !customerInfo.name || !customerInfo.phone || !customerInfo.address) {
+      return res.status(400).json({ message: 'بيانات العميل غير كاملة' });
+    }
     
     // تحضير عناصر الطلب - البيانات جاهزة من الفرونت إند
     const orderItems = items.map(item => ({
@@ -1957,6 +1967,7 @@ app.post('/api/checkout', async (req, res) => {
       // يمكن إضافة التحقق من الكوبون هنا إذا لزم الأمر
     }
 
+    // إنشاء الطلب
     const order = new Order({
       customerName: customerInfo.name,
       customerEmail: customerInfo.email || '',
@@ -1979,24 +1990,58 @@ app.post('/api/checkout', async (req, res) => {
       order.paymentId = paymentId;
     }
 
-    await order.save();
+    // حفظ الطلب
+    const savedOrder = await order.save();
     
-    console.log('Order created successfully:', order.id);
+    console.log('✅ [Checkout] Order created successfully:', {
+      orderId: savedOrder.id,
+      customerName: savedOrder.customerName,
+      total: savedOrder.total,
+      isGuest: !!isGuestOrder
+    });
+
+    // إرسال استجابة النجاح مع كامل البيانات
     res.status(201).json({ 
+      success: true,
       message: 'تم إرسال طلبك بنجاح!',
-      orderId: order.id,
+      orderId: savedOrder.id,
       order: {
-        id: order.id,
-        customerName: order.customerName,
-        total: order.total,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        orderDate: order.orderDate
+        id: savedOrder.id,
+        customerName: savedOrder.customerName,
+        customerEmail: savedOrder.customerEmail,
+        customerPhone: savedOrder.customerPhone,
+        address: savedOrder.address,
+        city: savedOrder.city,
+        total: savedOrder.total,
+        subtotal: savedOrder.subtotal,
+        deliveryFee: savedOrder.deliveryFee,
+        couponDiscount: savedOrder.couponDiscount,
+        status: savedOrder.status,
+        paymentMethod: savedOrder.paymentMethod,
+        paymentStatus: savedOrder.paymentStatus,
+        orderDate: savedOrder.orderDate,
+        items: savedOrder.items,
+        notes: savedOrder.notes
       }
     });
+
   } catch (error) {
-    console.error('Error in POST /api/checkout:', error);
-    res.status(500).json({ message: 'Failed to create order', error: error.message });
+    console.error('❌ [Checkout] Error creating order:', error);
+    
+    // إرسال رسالة خطأ مفصلة
+    let errorMessage = 'فشل في إتمام الطلب';
+    if (error.name === 'ValidationError') {
+      errorMessage = 'بيانات الطلب غير صحيحة';
+    } else if (error.code === 11000) {
+      errorMessage = 'خطأ في قاعدة البيانات - يرجى إعادة المحاولة';
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: errorMessage, 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
