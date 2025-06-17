@@ -192,17 +192,17 @@ async function connectDB() {
 // ======================
 // CATEGORIES APIs
 // ======================
-app.get('/api/categories', async (req, res) => {
+app.get('/categories', async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true }).sort({ createdAt: -1 });
     res.json(categories);
   } catch (error) {
-    console.error('Error in GET /api/categories:', error);
+    console.error('Error in GET /categories:', error);
     res.status(500).json({ message: 'Failed to fetch categories' });
   }
 });
 
-app.get('/api/categories/:id', async (req, res) => {
+app.get('/categories/:id', async (req, res) => {
   try {
     const category = await Category.findOne({ id: parseInt(req.params.id), isActive: true });
     if (!category) {
@@ -210,12 +210,12 @@ app.get('/api/categories/:id', async (req, res) => {
     }
     res.json(category);
   } catch (error) {
-    console.error('Error in GET /api/categories/:id:', error);
+    console.error('Error in GET /categories/:id:', error);
     res.status(500).json({ message: 'Failed to fetch category' });
   }
 });
 
-app.post('/api/categories', uploadFiles, async (req, res) => {
+app.post('/categories', uploadFiles, async (req, res) => {
   try {
     console.log('Creating category with data:', req.body);
     console.log('Files received:', req.files);
@@ -233,12 +233,12 @@ app.post('/api/categories', uploadFiles, async (req, res) => {
     console.log('Category created successfully:', category);
     res.status(201).json(category);
   } catch (error) {
-    console.error('Error in POST /api/categories:', error);
+    console.error('Error in POST /categories:', error);
     res.status(500).json({ message: 'Failed to create category', error: error.message });
   }
 });
 
-app.put('/api/categories/:id', uploadFiles, async (req, res) => {
+app.put('/categories/:id', uploadFiles, async (req, res) => {
   try {
     const { name, description } = req.body;
     const imageFile = req.files?.find(f => f.fieldname === 'mainImage');
@@ -2041,6 +2041,24 @@ app.put('/api/user/:userId/cart/update-options', async (req, res) => {
     console.error('❌ Error updating cart options:', error);
     res.status(500).json({ message: 'فشل في تحديث خيارات المنتج' });
   }
+});
+
+// ======================
+// DEBUGGING 404 ERRORS
+// ======================
+// هذا الكود سيلتقط أي طلب لا يجد مساراً مطابقاً
+app.use((req, res, next) => {
+  console.log(`[404 DEBUG] Received ${req.method} request for unmatched URL: ${req.originalUrl}`);
+  // تسجيل تفاصيل إضافية قد تساعد في كشف المشكلة
+  console.log('[404 DEBUG] Request Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('[404 DEBUG] Request Body:', JSON.stringify(req.body, null, 2));
+  
+  res.status(404).json({
+    message: `Endpoint not found on the server.`,
+    error: `The server received a ${req.method} request for the URL "${req.originalUrl}", but no corresponding route handler was found. Please check the API documentation or the server routing configuration.`,
+    method: req.method,
+    requestedUrl: req.originalUrl
+  });
 });
 
 // ======================
