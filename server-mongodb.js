@@ -1350,10 +1350,98 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ======================
-// AUTH APIs (للفرونت إند)
+// AUTHENTICATION APIs (Login, Register)
 // ======================
 
-// Send OTP for Authentication
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log(`🔒 Login attempt for email: ${email}`);
+
+    // التحقق من المدخلات
+    if (!email || !password) {
+      console.log('⚠️ Login failed: Missing email or password');
+      return res.status(400).json({ message: 'البريد الإلكتروني وكلمة المرور مطلوبان' });
+    }
+
+    // البحث عن المستخدم
+    const customer = await Customer.findOne({ email: email.toLowerCase() });
+    if (!customer) {
+      console.log(`⚠️ Login failed: User not found for email: ${email}`);
+      return res.status(404).json({ message: 'المستخدم غير موجود' });
+    }
+
+    // مقارنة كلمة المرور
+    const isMatch = await customer.comparePassword(password);
+    if (!isMatch) {
+      console.log(`⚠️ Login failed: Invalid password for email: ${email}`);
+      return res.status(401).json({ message: 'كلمة المرور غير صحيحة' });
+    }
+    
+    // إزالة كلمة المرور من بيانات المستخدم قبل إرسالها
+    const userResponse = customer.toObject();
+    delete userResponse.password;
+    delete userResponse.otp;
+
+    console.log(`✅ Login successful for user: ${email}`);
+    res.json({ message: 'تم تسجيل الدخول بنجاح', user: userResponse });
+
+  } catch (error) {
+    console.error('❌ Error in /api/auth/login:', error);
+    res.status(500).json({ message: 'حدث خطأ في الخادم' });
+  }
+});
+
+// Register
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, phone } = req.body;
+    console.log(`📝 Registration attempt for email: ${email}`);
+
+    // التحقق من المدخلات
+    if (!email || !password || !firstName || !lastName || !phone) {
+      console.log('⚠️ Registration failed: Missing required fields');
+      return res.status(400).json({ message: 'جميع الحقول مطلوبة' });
+    }
+
+    // التحقق من وجود المستخدم
+    const existingCustomer = await Customer.findOne({ email: email.toLowerCase() });
+    if (existingCustomer) {
+      console.log(`⚠️ Registration failed: Email already exists: ${email}`);
+      return res.status(409).json({ message: 'هذا البريد الإلكتروني مسجل بالفعل' });
+    }
+
+    // إنشاء مستخدم جديد
+    const newCustomer = new Customer({
+      email: email.toLowerCase(),
+      password,
+      firstName,
+      lastName,
+      phone,
+      name: `${firstName} ${lastName}`
+    });
+
+    await newCustomer.save();
+    
+    // إزالة كلمة المرور من بيانات المستخدم قبل إرسالها
+    const userResponse = newCustomer.toObject();
+    delete userResponse.password;
+    delete userResponse.otp;
+
+    console.log(`✅ Registration successful for user: ${email}`);
+    res.status(201).json({ message: 'تم إنشاء الحساب بنجاح', user: userResponse });
+
+  } catch (error) {
+    console.error('❌ Error in /api/auth/register:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'بيانات غير صالحة', errors: error.errors });
+    }
+    res.status(500).json({ message: 'حدث خطأ في الخادم' });
+  }
+});
+
+// Send OTP (Legacy - can be removed if not needed)
 app.post('/api/auth/send-otp', async (req, res) => {
   try {
     const { email } = req.body;
@@ -1387,16 +1475,16 @@ app.post('/api/auth/send-otp', async (req, res) => {
       res.json({ 
         message: 'تم إنشاء كود التحقق (تحقق من الإيميل أو الكونسول)',
         emailSent: false,
-        otp: otp // للتطوير فقط
+        backupOtp: otp // للتطوير فقط
       });
     }
   } catch (error) {
     console.error('Error in POST /api/auth/send-otp:', error);
-    res.status(500).json({ message: 'خطأ في الاتصال. حاول مرة أخرى' });
+    res.status(500).json({ message: 'Failed to send OTP' });
   }
 });
 
-// Verify OTP for Authentication
+// Verify OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -1411,20 +1499,11 @@ app.post('/api/auth/verify-otp', async (req, res) => {
       return res.status(400).json({ message: result.message });
     }
 
-    // تحديد إذا كان عميل موجود أو جديد
-    const isExistingUser = customer.name !== 'عميل جديد' && customer.phone !== '';
-    
     await customer.save();
-    
-    res.json({ 
-      message: result.message, 
-      customer,
-      isExistingUser,
-      user: isExistingUser ? customer : null
-    });
+    res.json({ message: result.message, customer });
   } catch (error) {
     console.error('Error in POST /api/auth/verify-otp:', error);
-    res.status(500).json({ message: 'خطأ في الاتصال. حاول مرة أخرى' });
+    res.status(500).json({ message: 'Failed to verify OTP' });
   }
 });
 
@@ -1453,117 +1532,8 @@ app.post('/api/auth/complete-registration', async (req, res) => {
   }
 });
 
-// Login endpoint
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    console.log('🔐 Login attempt for email:', email);
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: 'البريد الإلكتروني وكلمة المرور مطلوبان' });
-    }
-    
-    // البحث عن المستخدم بالبريد الإلكتروني
-    const customer = await Customer.findOne({ email: email.toLowerCase() });
-    
-    if (!customer) {
-      console.log('❌ User not found:', email);
-      return res.status(404).json({ message: 'البريد الإلكتروني غير مسجل في النظام' });
-    }
-    
-    // التحقق من كلمة المرور
-    const isPasswordValid = await customer.comparePassword(password);
-    
-    if (!isPasswordValid) {
-      console.log('❌ Invalid password for user:', email);
-      return res.status(401).json({ message: 'كلمة المرور غير صحيحة' });
-    }
-    
-    console.log('✅ Login successful for user:', email);
-    
-    // إرجاع بيانات المستخدم (بدون كلمة المرور)
-    const userResponse = {
-      id: customer.id,
-      email: customer.email,
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      phone: customer.phone,
-      name: `${customer.firstName} ${customer.lastName}`
-    };
-    
-    res.json({
-      message: 'تم تسجيل الدخول بنجاح',
-      user: userResponse
-    });
-    
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    res.status(500).json({ message: 'خطأ في الخادم، يرجى المحاولة لاحقاً' });
-  }
-});
-
-// Register endpoint
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password, firstName, lastName, phone } = req.body;
-    
-    console.log('📝 Registration attempt for email:', email);
-    
-    if (!email || !password || !firstName || !lastName || !phone) {
-      return res.status(400).json({ message: 'جميع الحقول مطلوبة' });
-    }
-    
-    // التحقق من وجود المستخدم
-    const existingCustomer = await Customer.findOne({ email: email.toLowerCase() });
-    
-    if (existingCustomer) {
-      console.log('❌ Email already registered:', email);
-      return res.status(400).json({ message: 'البريد الإلكتروني مسجل بالفعل، يرجى تسجيل الدخول أو استخدام بريد آخر' });
-    }
-    
-    // إنشاء مستخدم جديد
-    const newCustomer = new Customer({
-      email: email.toLowerCase(),
-      password,
-      firstName,
-      lastName,
-      phone
-    });
-    
-    await newCustomer.save();
-    
-    console.log('✅ Registration successful for user:', email);
-    
-    // إرجاع بيانات المستخدم (بدون كلمة المرور)
-    const userResponse = {
-      id: newCustomer.id,
-      email: newCustomer.email,
-      firstName: newCustomer.firstName,
-      lastName: newCustomer.lastName,
-      phone: newCustomer.phone,
-      name: `${newCustomer.firstName} ${newCustomer.lastName}`
-    };
-    
-    res.status(201).json({
-      message: 'تم إنشاء الحساب بنجاح',
-      user: userResponse
-    });
-    
-  } catch (error) {
-    console.error('❌ Registration error:', error);
-    
-    if (error.code === 11000) {
-      // خطأ التكرار في قاعدة البيانات
-      return res.status(400).json({ message: 'البريد الإلكتروني مسجل بالفعل' });
-    }
-    
-    res.status(500).json({ message: 'خطأ في الخادم، يرجى المحاولة لاحقاً' });
-  }
-});
-
 // ======================
-// USER-SPECIFIC APIs (للتوافق مع الفرونت إند)
+// USER CART APIs
 // ======================
 
 // Get user's cart
