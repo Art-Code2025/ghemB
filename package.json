@@ -1,6 +1,6 @@
 {
   "name": "mawasiem-backend",
-  "version": "0.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "server": "node server-mongodb.js",
